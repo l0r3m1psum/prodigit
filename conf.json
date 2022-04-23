@@ -1,0 +1,13 @@
+{
+	"auth": {"Username": "1234567", "Password": "my-secret-password"},
+	"bookings": [
+		["monday",    "RM018", "AULA 1", "10:00", "13:00", "computer network performance"],
+		["monday",    "RM102", "AULA A5", "14:00", "17:00", "natural language processing"],
+		["tuesday",   "RM115", "AULA G50", "08:00", "11:00", "mathematical logic for computer science"],
+		["tuesday",   "RM018", "AULA 1", "14:00", "17:00", "computer network performance"],
+		["wednesday", "RM018", "AULA 2", "16:00", "19:00", "deep learning and applied artificial intelligence"],
+		["thursday",  "RM115", "AULA G50", "08:00", "10:00", "mathematical logic for computer science"],
+		["thursday",  "RM018", "AULA 1", "10:00", "12:00", "deep learning and applied artificial intelligence"],
+		["thursday",  "RM102", "AULA A3", "16:00", "18:00", "natural language processing"]
+	]
+}
