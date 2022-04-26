@@ -1,7 +1,7 @@
 '''A simple program to automate the booking of classrooms at Sapienza during the
 pandemic on [Prodigit](https://prodigit.uniroma1.it). Big thanks to Deborah for
 doing the initial reverse engineering.'''
-import urllib.request, http.cookiejar, json, datetime
+import urllib.request, http.cookiejar, json, datetime, multiprocessing.pool
 
 CONFIG_FNAME: str = 'conf.json'
 
@@ -90,13 +90,13 @@ def main() -> int:
 	current_day: int = datetime.datetime.today().weekday()
 	day_offset: int = LAST_WEKDAY - current_day + 1
 	assert day_offset > 0
-	for booking in configuration['bookings']:
+	def book_class(booking: list[str]):
 		day_of_week, building, classroom, from_hour, to_hour, comment = booking
 		classroom: str = BUILDING_CLASSROOMS_DB[building][classroom]
 		days_from_now: int = WEEKDAY_TO_NUM[day_of_week] + day_offset
 		if days_from_now > MAX_DAY_AHEAD_FOR_BOOKING:
 			print(f'unable to book class for {day_of_week}')
-			continue
+			return
 		# This order of paramenters seems to be mandatory
 		booking_data: bytes = urllib.parse.urlencode([
 			('__Click', CLICK_MAGIC),
@@ -109,6 +109,8 @@ def main() -> int:
 		booking_resp = opener.open(BOOKING_URL, booking_data, TIMEOUT)
 		print(f'{booking_resp.msg=}')
 		print(f'{booking_resp.code=}')
+	with multiprocessing.pool.ThreadPool() as pool:
+		pool.map(book_class, configuration['bookings'])
 
 	# No data is needed for logout, just an empty POST request
 	logout_data: bytes = bytes()
