@@ -90,7 +90,7 @@ def main() -> int:
 	current_day: int = datetime.datetime.today().weekday()
 	day_offset: int = LAST_WEKDAY - current_day + 1
 	assert day_offset > 0
-	def book_class(booking: list[str]):
+	def book_class(booking: list[str]) -> None:
 		day_of_week, building, classroom, from_hour, to_hour, comment = booking
 		classroom: str = BUILDING_CLASSROOMS_DB[building][classroom]
 		days_from_now: int = WEEKDAY_TO_NUM[day_of_week] + day_offset
