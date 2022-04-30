@@ -15,6 +15,16 @@ find the configuration file in the current working directory.
 $ python3 -m prodigit
 ```
 
+# Quirks and Defects of Prodigit
+
+Prodigit is implemented in the oddest possible way, it is full of stange stuff,
+for examples the endpoints reply to you with `OK` and return code 200 even if
+they don't book any class so checking for errors is not usefull and the only way
+to know if your class was really booked is to check your INBOX.
+
+If you ever get impostor syndrom, always think about the fact that someone
+somewhere was paid to build Prodigit. This should make you fell better.
+
 # TODO
 
 It would be nice to also be able to get a list of booked classes and be able to
