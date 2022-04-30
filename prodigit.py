@@ -1,7 +1,7 @@
 '''A simple program to automate the booking of classrooms at Sapienza during the
 pandemic on [Prodigit](https://prodigit.uniroma1.it). Big thanks to Deborah for
 doing the initial reverse engineering.'''
-import urllib.request, http.cookiejar, json, datetime, multiprocessing.pool
+import urllib.request, http.cookiejar, json, datetime, multiprocessing.pool, sys
 
 CONFIG_FNAME: str = 'conf.json'
 
@@ -62,8 +62,12 @@ HEADERS: list[tuple[str, str]] = [
 CLICK_MAGIC: str = 'C12585E7003519C8.c8e9f943d3b2819fc12587ed0064a0a2/$Body/2.9F0'
 
 def main() -> int:
-	with open(CONFIG_FNAME) as config_file:
-		configuration = json.load(config_file)
+	try:
+		with open(CONFIG_FNAME) as config_file:
+			configuration = json.load(config_file)
+	except FileNotFoundError as e:
+		print('unable to find the configuration file', file=sys.stderr)
+		return 1
 
 	# The loging endpoint rediricts us various times, in the last redirect gives
 	# as the cookies we need, so to avoid having to keep track of redirections
@@ -76,13 +80,20 @@ def main() -> int:
 
 	# Fetching the cookie needed for authentication
 	login_data = urllib.parse.urlencode(configuration['auth']).encode()
-	login_resp = opener.open(LOGIN_URL, login_data, TIMEOUT)
-	print(f'{login_resp.code=}')
+	try:
+		login_resp = opener.open(LOGIN_URL, login_data, TIMEOUT)
+	except urllib.error.URLError as e:
+		print('unable to login', file=sys.stderr)
+		return 1
+
+	if login_resp.code != http.HTTPStatus.OK:
+		print('something went wrong while trying to login', file=sys.stderr)
+
 	for c in cj:
 		if c.name == 'LtpaToken':
 			ltpa_token = c
 			break
-	# print(ltpa_token)
+
 	auth_cookie = ('Cookie', f'{ltpa_token.name}={ltpa_token.value}')
 	opener.addheaders.append(auth_cookie)
 
@@ -91,7 +102,7 @@ def main() -> int:
 	day_offset: int = LAST_WEKDAY - current_day + 1
 	assert day_offset > 0
 	def book_class(booking: list[str]) -> None:
-		day_of_week, building, classroom, from_hour, to_hour, comment = booking
+		day_of_week, building, classroom, from_hour, to_hour, description = booking
 		classroom: str = BUILDING_CLASSROOMS_DB[building][classroom]
 		days_from_now: int = WEEKDAY_TO_NUM[day_of_week] + day_offset
 		if days_from_now > MAX_DAY_AHEAD_FOR_BOOKING:
@@ -106,16 +117,25 @@ def main() -> int:
 			(f'alleore{days_from_now}', to_hour),
 		]).encode() + b'&'
 
-		booking_resp = opener.open(BOOKING_URL, booking_data, TIMEOUT)
-		print(f'{booking_resp.msg=}')
-		print(f'{booking_resp.code=}')
+		try:
+			booking_resp = opener.open(BOOKING_URL, booking_data, TIMEOUT)
+		except urllib.error.URLError as e:
+			print(f'unable to book for {description}', file=sys.stderr)
+			return
+
+		if booking_resp.code != http.HTTPStatus.OK:
+			print('something went wrong while trying to book for {description}', file=sys.stderr)
 	with multiprocessing.pool.ThreadPool() as pool:
 		pool.map(book_class, configuration['bookings'])
 
-	# No data is needed for logout, just an empty POST request
+	# No data is needed for logout, just an empty POST request, also not sure if
+	# logout is needed at all
 	logout_data: bytes = bytes()
-	logout_resp = opener.open(LOGOUT_URL, logout_data, TIMEOUT)
-	print(f'{logout_resp.code=}')
+	try:
+		logout_resp = opener.open(LOGOUT_URL, logout_data, TIMEOUT)
+	except urllib.error.URLError as e:
+		pass
+	print('done!')
 
 if __name__ == '__main__':
 	raise SystemExit(main())
