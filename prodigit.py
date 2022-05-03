@@ -135,7 +135,7 @@ def main() -> int:
 		logout_resp = opener.open(LOGOUT_URL, logout_data, TIMEOUT)
 	except urllib.error.URLError as e:
 		pass
-	print('done!')
+	print('done! Check your inbox')
 
 if __name__ == '__main__':
 	raise SystemExit(main())
