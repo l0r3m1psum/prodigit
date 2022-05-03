@@ -12,7 +12,7 @@ program can be used by simply running it as a module. The program expects to
 find the configuration file in the current working directory.
 
 ```
-$ python3 -m prodigit
+$ python3 -OO -m prodigit
 ```
 
 # Quirks and Defects of Prodigit
