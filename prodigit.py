@@ -68,6 +68,9 @@ def main() -> int:
 	except FileNotFoundError as e:
 		print('unable to find the configuration file', file=sys.stderr)
 		return 1
+	except json.JSONDecodeError as e:
+		print(f'the configuration file is not valid JSON because: {e}', file=sys.stderr)
+		return 1
 
 	# The loging endpoint rediricts us various times, in the last redirect gives
 	# as the cookies we need, so to avoid having to keep track of redirections
@@ -102,29 +105,31 @@ def main() -> int:
 	day_offset: int = LAST_WEKDAY - current_day + 1
 	assert day_offset > 0
 	def book_class(booking: list[str]) -> None:
-		day_of_week, building, classroom, from_hour, to_hour, description = booking
-		classroom: str = BUILDING_CLASSROOMS_DB[building][classroom]
-		days_from_now: int = WEEKDAY_TO_NUM[day_of_week] + day_offset
-		if days_from_now > MAX_DAY_AHEAD_FOR_BOOKING:
-			print(f'unable to book class for {day_of_week}')
-			return
-		# This order of paramenters seems to be mandatory
-		booking_data: bytes = urllib.parse.urlencode([
-			('__Click', CLICK_MAGIC),
-			('codiceedificio', building),
-			('aula', classroom), # must be quoted with plus
-			(f'dalleore{days_from_now}', from_hour),
-			(f'alleore{days_from_now}', to_hour),
-		]).encode() + b'&'
-
 		try:
+			day_of_week, building, classroom, from_hour, to_hour, description = booking
+			classroom: str = BUILDING_CLASSROOMS_DB[building][classroom]
+			days_from_now: int = WEEKDAY_TO_NUM[day_of_week] + day_offset
+			if days_from_now > MAX_DAY_AHEAD_FOR_BOOKING:
+				print(f'unable to book class for {day_of_week}')
+				return
+			# This order of paramenters seems to be mandatory
+			booking_data: bytes = urllib.parse.urlencode([
+				('__Click', CLICK_MAGIC),
+				('codiceedificio', building),
+				('aula', classroom), # must be quoted with plus
+				(f'dalleore{days_from_now}', from_hour),
+				(f'alleore{days_from_now}', to_hour),
+			]).encode() + b'&'
 			booking_resp = opener.open(BOOKING_URL, booking_data, TIMEOUT)
+
+			if booking_resp.code != http.HTTPStatus.OK:
+				print('something went wrong while trying to book for {description}', file=sys.stderr)
+		except ValueError as e:
+			print(f'the entry in the bookings table contains the wrong number of elements: {e}', file=sys.stderr)
+		except KeyError as e:
+			print(f'bad value in one of the field of the booking table: {e}', file=sys.stderr)
 		except urllib.error.URLError as e:
 			print(f'unable to book for {description}', file=sys.stderr)
-			return
-
-		if booking_resp.code != http.HTTPStatus.OK:
-			print('something went wrong while trying to book for {description}', file=sys.stderr)
 	with multiprocessing.pool.ThreadPool() as pool:
 		pool.map(book_class, configuration['bookings'])
 
