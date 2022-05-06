@@ -1,7 +1,7 @@
 '''A simple program to automate the booking of classrooms at Sapienza during the
 pandemic on [Prodigit](https://prodigit.uniroma1.it). Big thanks to Deborah for
 doing the initial reverse engineering.'''
-import urllib.request, http.cookiejar, json, datetime, multiprocessing.pool, sys
+import urllib.request, http.cookiejar, json, datetime, multiprocessing.pool, sys, os, re
 
 CONFIG_FNAME: str = 'conf.json'
 
@@ -59,7 +59,6 @@ HEADERS: list[tuple[str, str]] = [
 	('Connection', 'keep-alive'),
 	('Content-Type', 'application/x-www-form-urlencoded'),
 ]
-CLICK_MAGIC: str = 'C12585E7003519C8.c8e9f943d3b2819fc12587ed0064a0a2/$Body/2.9F0'
 
 def main() -> int:
 	try:
@@ -100,6 +99,15 @@ def main() -> int:
 	auth_cookie = ('Cookie', f'{ltpa_token.name}={ltpa_token.value}')
 	opener.addheaders.append(auth_cookie)
 
+	test_url = 'https://prodigit.uniroma1.it/prenotazioni/prenotaaule.nsf/prenotaposto-aula-lezioni?OpenForm&Seq=1#_RefreshKW_codiceedificio'
+	test_data: bytes = urllib.parse.urlencode([
+		('__Click', '$Refresh'),
+		('codiceedificio', 'AOSG1'),
+	]).encode()
+	test_resp = opener.open(test_url, test_data, TIMEOUT)
+	test_page = test_resp.read().decode()
+	click_magic = re.search("return _doClick\('(.+)', this, null\)", test_page).group(1)
+
 	# We try to book classes starting from next week.
 	current_day: int = datetime.datetime.today().weekday()
 	day_offset: int = LAST_WEKDAY - current_day + 1
@@ -114,7 +122,7 @@ def main() -> int:
 				return
 			# This order of paramenters seems to be mandatory
 			booking_data: bytes = urllib.parse.urlencode([
-				('__Click', CLICK_MAGIC),
+				('__Click', click_magic),
 				('codiceedificio', building),
 				('aula', classroom), # must be quoted with plus
 				(f'dalleore{days_from_now}', from_hour),
@@ -130,7 +138,8 @@ def main() -> int:
 			print(f'bad value in one of the field of the booking table: {e}', file=sys.stderr)
 		except urllib.error.URLError as e:
 			print(f'unable to book for {description}', file=sys.stderr)
-	with multiprocessing.pool.ThreadPool() as pool:
+	n_of_threads: int = 1 if __debug__ else os.cpu_count()
+	with multiprocessing.pool.ThreadPool(n_of_threads) as pool:
 		pool.map(book_class, configuration['bookings'])
 
 	# No data is needed for logout, just an empty POST request, also not sure if
