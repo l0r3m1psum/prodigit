@@ -52,6 +52,7 @@ MAX_DAY_AHEAD_FOR_BOOKING: int = 10
 
 TIMEOUT: int = 10 # seconds
 LOGIN_URL: str = 'https://prodigit.uniroma1.it/names.nsf?Login'
+CLICK_URL: str = 'https://prodigit.uniroma1.it/prenotazioni/prenotaaule.nsf/prenotaposto-aula-lezioni?OpenForm&Seq=4#_RefreshKW_dichiarazione'
 BOOKING_URL: str = 'https://prodigit.uniroma1.it/prenotazioni/prenotaaule.nsf/prenotaposto-aula-lezioni'
 LOGOUT_URL: str = 'https://prodigit.uniroma1.it/prenotazioni/prenotaaule.nsf?logout'
 HEADERS: list[tuple[str, str]] = [
@@ -99,14 +100,22 @@ def main() -> int:
 	auth_cookie = ('Cookie', f'{ltpa_token.name}={ltpa_token.value}')
 	opener.addheaders.append(auth_cookie)
 
-	test_url = 'https://prodigit.uniroma1.it/prenotazioni/prenotaaule.nsf/prenotaposto-aula-lezioni?OpenForm&Seq=1#_RefreshKW_codiceedificio'
-	test_data: bytes = urllib.parse.urlencode([
+	# TODO: refactor
+	# Here we simulate the clicking through the interface to get a magic click
+	# value, the important thing seems to accept the "responsability
+	# declaration".
+	click_data: bytes = urllib.parse.urlencode([
 		('__Click', '$Refresh'),
 		('codiceedificio', 'AOSG1'),
+		('aula', 'AULA 3 ESTERNA -- AOSG1-0003'),
+		('dalleore1', '08:00'),
+		('alleore1', '09:00'),
+		('dichiarazione', ':'), # this does the trick!
 	]).encode()
-	test_resp = opener.open(test_url, test_data, TIMEOUT)
-	test_page = test_resp.read().decode()
-	click_magic = re.search("return _doClick\('(.+)', this, null\)", test_page).group(1)
+	# TODO: try/except for URLError, UnicodeError and IndexError
+	click_resp = opener.open(CLICK_URL, click_data, TIMEOUT)
+	page_with_click_magic = click_resp.read().decode()
+	click_magic = re.search("return _doClick\('(.+)', this, null\)", page_with_click_magic).group(1)
 
 	# We try to book classes starting from next week.
 	current_day: int = datetime.datetime.today().weekday()
