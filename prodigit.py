@@ -115,7 +115,13 @@ def main() -> int:
 	# TODO: try/except for URLError, UnicodeError and IndexError
 	click_resp = opener.open(CLICK_URL, click_data, TIMEOUT)
 	page_with_click_magic = click_resp.read().decode()
-	click_magic = re.search("return _doClick\('(.+)', this, null\)", page_with_click_magic).group(1)
+	# In the page there are two places in which the regex matches, we are
+	# intrested only in the first one (which is what re.search returns).
+	click_magic_match = re.search("return _doClick\('(.+)', this, null\)", page_with_click_magic)
+	if not click_magic_match:
+		print('unable to fetch the click magic value', file=sys.stderr)
+		return 1
+	click_magic: str = click_magic_match.group(1)
 
 	# We try to book classes starting from next week.
 	current_day: int = datetime.datetime.today().weekday()
