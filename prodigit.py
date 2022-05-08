@@ -100,7 +100,6 @@ def main() -> int:
 	auth_cookie = ('Cookie', f'{ltpa_token.name}={ltpa_token.value}')
 	opener.addheaders.append(auth_cookie)
 
-	# TODO: refactor
 	# Here we simulate the clicking through the interface to get a magic click
 	# value, the important thing seems to accept the "responsability
 	# declaration".
@@ -112,9 +111,15 @@ def main() -> int:
 		('alleore1', '09:00'),
 		('dichiarazione', ':'), # this does the trick!
 	]).encode()
-	# TODO: try/except for URLError, UnicodeError and IndexError
-	click_resp = opener.open(CLICK_URL, click_data, TIMEOUT)
-	page_with_click_magic = click_resp.read().decode()
+	try:
+		click_resp = opener.open(CLICK_URL, click_data, TIMEOUT)
+		page_with_click_magic = click_resp.read().decode()
+	except urllib.error.URLError as e:
+		print('unable to make request for click magic value', file=sys.stderr)
+		return 1
+	except UnicodeError as e:
+		print('unable to decode response', file=sys.stderr)
+		return 1
 	# In the page there are two places in which the regex matches, we are
 	# intrested only in the first one (which is what re.search returns).
 	click_magic_match = re.search("return _doClick\('(.+)', this, null\)", page_with_click_magic)
