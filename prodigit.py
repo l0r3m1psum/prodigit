@@ -1,7 +1,14 @@
 '''A simple program to automate the booking of classrooms at Sapienza during the
 pandemic on [Prodigit](https://prodigit.uniroma1.it). Big thanks to Deborah for
 doing the initial reverse engineering.'''
-import urllib.request, http.cookiejar, json, datetime, multiprocessing.pool, sys, os, re
+import datetime
+import http.cookiejar
+import json
+import multiprocessing.pool
+import os
+import re
+import sys
+import urllib.request
 
 CONFIG_FNAME: str = 'conf.json'
 
@@ -52,11 +59,15 @@ MAX_DAY_AHEAD_FOR_BOOKING: int = 10
 
 TIMEOUT: int = 10 # seconds
 LOGIN_URL: str = 'https://prodigit.uniroma1.it/names.nsf?Login'
-CLICK_URL: str = 'https://prodigit.uniroma1.it/prenotazioni/prenotaaule.nsf/prenotaposto-aula-lezioni?OpenForm&Seq=4#_RefreshKW_dichiarazione'
-BOOKING_URL: str = 'https://prodigit.uniroma1.it/prenotazioni/prenotaaule.nsf/prenotaposto-aula-lezioni'
+CLICK_URL: str = 'https://prodigit.uniroma1.it/prenotazioni/prenotaaule.nsf/' \
+	'prenotaposto-aula-lezioni?OpenForm&Seq=4#_RefreshKW_dichiarazione'
+BOOKING_URL: str = 'https://prodigit.uniroma1.it/prenotazioni/prenotaaule.nsf/' \
+	'prenotaposto-aula-lezioni'
 LOGOUT_URL: str = 'https://prodigit.uniroma1.it/prenotazioni/prenotaaule.nsf?logout'
 HEADERS: list[tuple[str, str]] = [
-	('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9'),
+	('Accept', 'text/html,application/xhtml+xml,application/xml;q=0.9,' \
+		'image/avif,image/webp,image/apng,*/*;q=0.8,' \
+		'application/signed-exchange;v=b3;q=0.9'),
 	('Connection', 'keep-alive'),
 	('Content-Type', 'application/x-www-form-urlencoded'),
 ]
@@ -69,7 +80,8 @@ def main() -> int:
 		print('unable to find the configuration file', file=sys.stderr)
 		return 1
 	except json.JSONDecodeError as e:
-		print(f'the configuration file is not valid JSON because: {e}', file=sys.stderr)
+		print(f'the configuration file is not valid JSON because: {e}',
+			file=sys.stderr)
 		return 1
 
 	# The loging endpoint rediricts us various times, in the last redirect gives
@@ -122,7 +134,8 @@ def main() -> int:
 		return 1
 	# In the page there are two places in which the regex matches, we are
 	# intrested only in the first one (which is what re.search returns).
-	click_magic_match = re.search("return _doClick\('(.+)', this, null\)", page_with_click_magic)
+	click_magic_match = re.search("return _doClick\('(.+)', this, null\)",
+		page_with_click_magic)
 	if not click_magic_match:
 		print('unable to fetch the click magic value', file=sys.stderr)
 		return 1
@@ -151,11 +164,14 @@ def main() -> int:
 			booking_resp = opener.open(BOOKING_URL, booking_data, TIMEOUT)
 
 			if booking_resp.code != http.HTTPStatus.OK:
-				print('something went wrong while trying to book for {description}', file=sys.stderr)
+				print('something went wrong while trying to book for {description}',
+					file=sys.stderr)
 		except ValueError as e:
-			print(f'the entry in the bookings table contains the wrong number of elements: {e}', file=sys.stderr)
+			print(f'the entry in the bookings table contains the wrong number '
+				f'of elements: {e}', file=sys.stderr)
 		except KeyError as e:
-			print(f'bad value in one of the field of the booking table: {e}', file=sys.stderr)
+			print(f'bad value in one of the field of the booking table: {e}',
+				file=sys.stderr)
 		except urllib.error.URLError as e:
 			print(f'unable to book for {description}', file=sys.stderr)
 	n_of_threads: int = 1 if __debug__ else os.cpu_count()
