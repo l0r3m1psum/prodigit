@@ -58,6 +58,7 @@ LAST_WEKDAY: int = WEEKDAY_TO_NUM['sunday']
 MAX_DAY_AHEAD_FOR_BOOKING: int = 10
 
 TIMEOUT: int = 10 # seconds
+AUTH_COOKIE_NAME: str = 'LtpaToken'
 LOGIN_URL: str = 'https://prodigit.uniroma1.it/names.nsf?Login'
 CLICK_URL: str = 'https://prodigit.uniroma1.it/prenotazioni/prenotaaule.nsf/' \
 	'prenotaposto-aula-lezioni?OpenForm&Seq=4#_RefreshKW_dichiarazione'
@@ -94,7 +95,7 @@ def main() -> int:
 	opener.addheaders = HEADERS
 
 	# Fetching the cookie needed for authentication
-	login_data = urllib.parse.urlencode(configuration['auth']).encode()
+	login_data: bytes = urllib.parse.urlencode(configuration['auth']).encode()
 	try:
 		login_resp = opener.open(LOGIN_URL, login_data, TIMEOUT)
 	except urllib.error.URLError as e:
@@ -105,11 +106,15 @@ def main() -> int:
 		print('something went wrong while trying to login', file=sys.stderr)
 
 	for c in cj:
-		if c.name == 'LtpaToken':
-			ltpa_token = c
+		if c.name == AUTH_COOKIE_NAME:
+			auth_cookie = c
 			break
+	else:
+		print('unable to get authorization cookie', file=sys.stderr)
+		return 1
 
-	auth_cookie = ('Cookie', f'{ltpa_token.name}={ltpa_token.value}')
+	assert auth_cookie.name == AUTH_COOKIE_NAME
+	auth_cookie = ('Cookie', f'{AUTH_COOKIE_NAME}={auth_cookie.value}')
 	opener.addheaders.append(auth_cookie)
 
 	# Here we simulate the clicking through the interface to get a magic click
@@ -125,7 +130,7 @@ def main() -> int:
 	]).encode()
 	try:
 		click_resp = opener.open(CLICK_URL, click_data, TIMEOUT)
-		page_with_click_magic = click_resp.read().decode()
+		page_with_click_magic: str = click_resp.read().decode()
 	except urllib.error.URLError as e:
 		print('unable to make request for click magic value', file=sys.stderr)
 		return 1
