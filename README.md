@@ -4,7 +4,7 @@ This simple programs automates the task of booking classes via 4
 [Prodigit](https://prodigit.uniroma1.it). It reads a configuration file 5
 containing your credentials and class schedule for the week and tries to book 6
 all of them for the next week. The initial reversing of the Prodigit API was
-done by @deborahdore `:)`.
+done by [@deborahdore](https://github.com/deborahdore) `:)`.
 
 # Usage
 
